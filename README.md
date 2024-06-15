@@ -1,46 +1,31 @@
 # session_id
 
-Библиотека для работы с ID пользователей Session
+Library for working with Session users IDs
 
-## НЕЗАВЕРШЁННАЯ РАБОТА
+## UNFINISHED WORK
 
-На данный момент библиотека находится в "сыром" виде и не имеет нормальной документации, поэтому, пожалуйста, не используйте её в production версиях ваших продуктов. Автор не несёт никакой ответственности за использование/последствия использования этой библиотеки. Вас предупредили!
+At the moment, the library is in its "raw" form and does not have normal documentation, so please do not use it in production versions of your products. The author assumes no responsibility for the use/consequences of using this library. You have been warned!
 
-## Примеры
-### Конвертация в Ed25519
+## Examples
+### Convert to Ed25519
 ```ts
-import libsodiumwrappers from 'libsodium-wrappers-sumo';
+import { SessionID } from "@li0ard/session_id"
 
-async function getSodiumRenderer() {
-    await libsodiumwrappers.ready;
-    return libsodiumwrappers;
-}
-
-(async function() {
-    let a = new SessionID(await getSodiumRenderer())
-    let id = "05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40"
-    console.log(a.convertToEd25519Key(id.substring(2))) // -> 534eff88b5a39478963ec070a5032db54ce7457a4bb4b4f1c73355eb48ab3473
-})()
+let a = new SessionID()
+let id = "d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40" // Session ID without 05 prefix
+console.log(a.convertToEd25519Key(id.substring(2))) // -> 534eff88b5a39478963ec070a5032db54ce7457a4bb4b4f1c73355eb48ab3473
 ```
 
-## Методы
-
-### SessionID(sodium: LibSodiumWrappers): SessionID
-
-Конструктор класа в который необходимо передавать инициализированный контекст libsodium
+## Methods
 
 ### convertToEd25519Key(key: string): string
 
-Конвертация Session ID (без префикса 05) в Ed25519
+Converting Session ID to Ed25519 public key
 
-### convertToX25519Key(key: string): string
+### convertToCurve25519Key(key: string): string
 
-Конвертация Ed25519 в Session ID (без префикса 05)
+Converting Ed25519 public key to Session ID (Curve25519)
 
-### generateBlindedIds(sessionId: string, serverPk: string): string[]
+### generateBlindedId(sessionId: string, serverPk: string): string
 
-Генерирование так называемых "слепых" id пользователя для конкретного сервера по его публичному ключу
-
-### tryMatchBlindedToStandard(sessionId: string, blindedId: string, serverPk: string): boolean
-
-Сравнение "слепых" id с Session ID для конкретного сервера по его публичному ключу
+Generating blinded ID for Session ID using server public key
