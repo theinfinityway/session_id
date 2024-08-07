@@ -17,6 +17,7 @@ jobs:
           node-version: 16
       - run: bun i
       - run: bun test
+      - run: bun run build
 
   publish-npm:
     needs: build

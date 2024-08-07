@@ -1,15 +1,14 @@
 {
   "name": "@li0ard/session_id",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist/"],
   "scripts": {
-    "build": "tsc",
-    "clean": "rm dist/*.js",
-    "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js tests/"
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "rm -rf dist/"
   },
   "author": "li0ard",
   "license": "MIT",
