@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: oven-sh/setup-bun@v2
         with:
           node-version: 16
-      - run: npm i
-      - run: npm test
+      - run: bun i
+      - run: bun test
 
   publish-npm:
     needs: build

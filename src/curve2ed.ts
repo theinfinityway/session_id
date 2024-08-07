@@ -543,13 +543,13 @@ function pack25519(o: any, n: any) {
   }
 }
 
-export function crypto_sign_curve25519_pk_to_ed25519(pk: any) {
-  return convertPublicKey(pk)
-}
-
-// Converts Curve25519 public key back to Ed25519 public key.
 // edwardsY = (montgomeryX - 1) / (montgomeryX + 1)
-function convertPublicKey(pk: any) {
+/**
+ * Converts Curve25519 public key back to Ed25519 public key.
+ * @param pk Curve25519 public key
+ * @returns 
+ */
+export function crypto_sign_curve25519_pk_to_ed25519(pk: Uint8Array) {
   var z = new Uint8Array(32),
     x = gf(),
     a = gf(),
