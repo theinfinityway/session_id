@@ -8,9 +8,9 @@ Library for working with Session users IDs
 ## Examples
 ### Convert to Ed25519
 ```ts
-import { SessionID, ID } from "@li0ard/session_id"
+import { Converter, ID } from "@li0ard/session_id"
 
-let a = new SessionID()
+let a = new Converter()
 let id = new ID("05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40")
 console.log(a.convertToEd25519Key(id).toString(true))
 ```
