@@ -4,9 +4,15 @@ await sodium.ready
 
 /**
  * Class for representing Session ID
+ * @example
+ * ```ts
+ * new ID("05fc331b505085fecc2188707c1da8002ee3edc6eb5591e36ded40a4669a94ab11")
+ * ```
  */
 export class ID {
+    /** ID prefix */
     prefix: string = "05"
+    /** ID value without prefix */
     id: string
 
     /**
@@ -43,10 +49,16 @@ export class ID {
 
 /**
  * Converter class
+ * @hideconstructor
+ * @example
+ * ```ts
+ * new Converter().convertToEd25519Key(...)
+ * ```
  */
 export class Converter {
     /**
      * Converts Curve25519 public key back to Ed25519 public key.
+     * @category Curve <-> Edwards
      * @param key Session ID
      */
     convertToEd25519Key(key: ID): ID {
@@ -56,6 +68,7 @@ export class Converter {
 
     /**
      * Converts Ed25519 public key to Curve25519 public key
+     * @category Curve <-> Edwards
      * @param key Ed25519 public key
      */
     convertToCurve25519Key(key: ID): ID {
@@ -68,6 +81,7 @@ export class Converter {
     // CREDIT: https://github.com/VityaSchel/bunsogs/blob/main/src/blinding.ts
     /**
      * Generate Blinded ID from Session ID for server public key (15xx, legacy format)
+     * @category Blinded ID
      * @param sessionId Session ID
      * @param serverPk  Server public key
      * @author hloth
@@ -98,8 +112,10 @@ export class Converter {
 
     /**
      * Generate Blinded ID from Session ID for server public key (25xx, new format)
+     * @category Blinded ID
      * @param sessionId Session ID
      * @param serverPk  Server public key
+     * @experimental
      */
     generateBlindedId25(sessionId: ID, serverPk: string): ID {
         const generateBlindingFactor = (id: string, serverPk: string): Uint8Array => {

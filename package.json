@@ -8,7 +8,8 @@
   "files": ["dist/"],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
-    "clean": "rm -rf dist/"
+    "clean": "rm -rf dist/",
+    "docs": "rm -rf docs/ && typedoc --readme README.md --name \"Session ID\" --out ./docs/ --tsconfig tsconfig.json src/"
   },
   "author": "li0ard",
   "license": "MIT",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.6",
-    "@types/libsodium-wrappers-sumo": "^0.7.8"
+    "@types/libsodium-wrappers-sumo": "^0.7.8",
+    "typedoc": "^0.26.5"
   }
 }
