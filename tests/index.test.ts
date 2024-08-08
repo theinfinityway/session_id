@@ -40,7 +40,7 @@ describe("Curve <-> Edwards", () => {
     })
 })
 
-describe("Blinded ID", () => {
+describe("Blinded ID (legacy)", () => {
     test('Generation #1', () => {
         let id = new ID('057aeb66e45660c3bdfb7c62706f6440226af43ec13f3b6f899c1dd4db1b8fce5b')
         expect(
@@ -76,5 +76,25 @@ describe("Blinded ID", () => {
         expect(
             a.generateBlindedId(id, "1615317ca1d8ecdf12dad1bbf1d28d3a90c94fc0010043a7fdc1609ad1c5d111").toString()
         ).toBe("1562b2368a1d5452cc25c713b9add4f29405e5e58f6c4aa83fde602a7308bae794")
+    })
+})
+
+describe("Blinded ID (new)", () => {
+    let id = new ID("05fe94b7ad4b7f1cc1bb92671f1f0d243f226e115b33770465e82b503fc3e96e1f")
+    let id2 = new ID("0505c9a9bf178fa644d44bebf628716dc7f2df3d0842e97881962c723699152073")
+    test("Generation #1", () => {
+        expect(
+            a.generateBlindedId25(id, "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789").toString()
+        ).toBe("253b991dcbba44cfdb45d5b38880d95cff723309e3ece6fd01415ad5fa1dccc7ac")
+    })
+    test("Generation #2", () => {
+        expect(
+            a.generateBlindedId25(id, "00cdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789").toString()
+        ).toBe("2598589c7885b56cbeae6ab7b4224f202815520a54995872cb1833b44db6401c8d")
+    })
+    test("Generation #3", () => {
+        expect(
+            a.generateBlindedId25(id2, "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789").toString()
+        ).toBe("25a69cc6884530bf8498d22892e563716c4742f2845a7eb608de2aecbe7b6b5996")
     })
 })
