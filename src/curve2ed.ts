@@ -1,39 +1,41 @@
-function gf(init?: any) {
+type GF = Float64Array
+
+const gf = (init?: number[]): GF => {
   var i, r = new Float64Array(16);
   if (init) for (i = 0; i < init.length; i++) r[i] = init[i];
   return r;
 };
 
-function unpack25519(o: any, n: any) {
+const unpack25519 = (o: GF, n: Uint8Array) => {
   var i;
   for (i = 0; i < 16; i++) o[i] = n[2 * i] + (n[2 * i + 1] << 8);
   o[15] &= 0x7fff;
 }
 
-function A(o: any, a: any, b: any) {
+const add = (o: GF, a: GF, b: GF) => {
   for (var i = 0; i < 16; i++) o[i] = a[i] + b[i];
 }
 
-function Z(o: any, a: any, b: any) {
+const sub = (o: GF, a: GF, b: GF) => {
   for (var i = 0; i < 16; i++) o[i] = a[i] - b[i];
 }
 
-function S(o: any, a: any) {
-  M(o, a, a);
+const square = (o: GF, a: GF) => {
+  mul(o, a, a);
 }
 
-function inv25519(o: any, i: any) {
+const inv25519 = (o: GF, i: GF) => {
   var c = gf();
   var a;
   for (a = 0; a < 16; a++) c[a] = i[a];
   for (a = 253; a >= 0; a--) {
-    S(c, c);
-    if (a !== 2 && a !== 4) M(c, c, i);
+    square(c, c);
+    if (a !== 2 && a !== 4) mul(c, c, i);
   }
   for (a = 0; a < 16; a++) o[a] = c[a];
 }
 
-function M(o: any, a: any, b: any) {
+const mul = (o: GF, a: GF, b: GF) => {
   var v,
     c,
     t0 = 0,
@@ -496,7 +498,7 @@ function M(o: any, a: any, b: any) {
   o[15] = t15;
 }
 
-function car25519(o: any) {
+const car25519 = (o: GF) => {
   var i,
     v,
     c = 1;
@@ -508,7 +510,7 @@ function car25519(o: any) {
   o[0] += c - 1 + 37 * (c - 1);
 }
 
-function sel25519(p: any, q: any, b: any) {
+const sel25519 = (p: GF, q: GF, b: number) => {
   var t,
     c = ~(b - 1);
   for (var i = 0; i < 16; i++) {
@@ -518,7 +520,7 @@ function sel25519(p: any, q: any, b: any) {
   }
 }
 
-function pack25519(o: any, n: any) {
+const pack25519 = (o: Uint8Array, n: GF) => {
   var i, j, b;
   var m = gf(),
     t = gf();
@@ -543,13 +545,13 @@ function pack25519(o: any, n: any) {
   }
 }
 
-// edwardsY = (montgomeryX - 1) / (montgomeryX + 1)
 /**
  * Converts Curve25519 public key back to Ed25519 public key.
+ * 
+ * `edwardsY = (montgomeryX - 1) / (montgomeryX + 1)`
  * @param pk Curve25519 public key
- * @returns 
  */
-export function crypto_sign_curve25519_pk_to_ed25519(pk: Uint8Array) {
+export const crypto_sign_curve25519_pk_to_ed25519 = (pk: Uint8Array) => {
   var z = new Uint8Array(32),
     x = gf(),
     a = gf(),
@@ -558,10 +560,10 @@ export function crypto_sign_curve25519_pk_to_ed25519(pk: Uint8Array) {
 
   unpack25519(x, pk);
 
-  A(a, x, gf1);
-  Z(b, x, gf1);
+  add(a, x, gf1);
+  sub(b, x, gf1);
   inv25519(a, a);
-  M(a, a, b);
+  mul(a, a, b);
 
   pack25519(z, a);
   return z;
