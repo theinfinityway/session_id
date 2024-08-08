@@ -101,7 +101,7 @@ export class Converter {
      * @param sessionId Session ID
      * @param serverPk  Server public key
      */
-    generateBlindedId25(sessionId: ID, serverPk: string) {
+    generateBlindedId25(sessionId: ID, serverPk: string): ID {
         const generateBlindingFactor = (id: string, serverPk: string): Uint8Array => {
             const hexServerPk = sodium.from_hex(serverPk)
             const hexId = sodium.from_hex(id)
