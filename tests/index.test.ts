@@ -42,40 +42,40 @@ describe("Curve <-> Edwards", () => {
 
 describe("Blinded ID (legacy)", () => {
     test('Generation #1', () => {
-        let id = new ID('057aeb66e45660c3bdfb7c62706f6440226af43ec13f3b6f899c1dd4db1b8fce5b')
+        let id = new ID('057aeb66e45660c3bdfb7c62706f6440226af43ec13f3b6f899c1dd4db1b8fce5b', "15")
         expect(
-            a.generateBlindedId(id, 'cb4fd6199b84dc3664f0373354341a01007ecaa99a388496fe8775b9b76a253b').toString()
-        ).toBe('15383d0a3ba605abe3b5b7343102be3fc0026056b9812e06f6daee3be62a6a56e3')
+            a.generateBlindedId(id, 'ac9c872e525a58970df6971655abb944a30b38853442a793b29843d20795e840').toString()
+        ).toBe('15264c132e2e72a9c50b7a981eac11a48b3e51ae5a0ea45ea47deb519a3fa76612')
     })
     test('Generation #2', () => {
-        let id = new ID('05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40')
+        let id = new ID('057aeb66e45660c3bdfb7c62706f6440226af43ec13f3b6f899c1dd4db1b8fce5b') // session_id
         expect(
-            a.generateBlindedId(id, '39016f991400c35a46e11e06cb2a64d6d8ab6652e484a556b14f7cf57ed7e73a').toString()
-        ).toBe('1583d48386fe3adf2ff0707bcea0c028cf9eea1876e5f723fba359a24a0858fdd5')
+            a.generateBlindedId(id, 'cb4fd6199b84dc3664f0373354341a01007ecaa99a388496fe8775b9b76a253b').toString() // pubkey
+        ).toBe('15383d0a3ba605abe3b5b7343102be3fc0026056b9812e06f6daee3be62a6a56e3') // expected
     })
     test('Generation #3', () => {
-        let id = new ID('05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40')
+        let id = new ID('05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40') // session_id
         expect(
-            a.generateBlindedId(id, 'a03c383cf63c3c4efe67acc52112a6dd734b3a946b9545f488aaa93da7991238').toString()
-        ).toBe('15c6807a9933310392a26de0cf9635fba1535b2b9296c9eb6a060481d51b8983a7')
+            a.generateBlindedId(id, '39016f991400c35a46e11e06cb2a64d6d8ab6652e484a556b14f7cf57ed7e73a').toString() // pubkey
+        ).toBe('1583d48386fe3adf2ff0707bcea0c028cf9eea1876e5f723fba359a24a0858fdd5') // expected
     })
     test('Generation #4', () => {
-        let id = new ID('05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40')
+        let id = new ID('05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40') // session_id
         expect(
-            a.generateBlindedId(id, '39016f991400c35a46e11e06cb2a64d6d8ab6652e484a556b14f7cf57ed7e73a').toString()
-        ).toBe('1583d48386fe3adf2ff0707bcea0c028cf9eea1876e5f723fba359a24a0858fdd5')
+            a.generateBlindedId(id, 'a03c383cf63c3c4efe67acc52112a6dd734b3a946b9545f488aaa93da7991238').toString() // pubkey
+        ).toBe('15c6807a9933310392a26de0cf9635fba1535b2b9296c9eb6a060481d51b8983a7') // expected
     })
     test('Generation #5', () => {
-        let id = new ID('052c4eab9297e26af618df469b87aaee2d2a8db45eb42c9d6a8d48768425f5bb65')
+        let id = new ID('052c4eab9297e26af618df469b87aaee2d2a8db45eb42c9d6a8d48768425f5bb65') // session_id
         expect(
-            a.generateBlindedId(id, '118df8c6c471ac0468c7c77e1cdc12f24a139ee8a07c6e3bf4e7855640dad821').toString()
-        ).toBe('153645531fb118086b5a5c0a6c92cbb8e65b30daa10e2ef6857683ffe05fc25194')
+            a.generateBlindedId(id, '118df8c6c471ac0468c7c77e1cdc12f24a139ee8a07c6e3bf4e7855640dad821').toString() // pubkey
+        ).toBe('153645531fb118086b5a5c0a6c92cbb8e65b30daa10e2ef6857683ffe05fc25194') // expected
     })
     test("Generation #6", () => {
-        let id = new ID("055bcd2bb6e600c43741173e489d925a505a11ab2b971afde56e50272e430f8b37")
+        let id = new ID("05d59dd03e98af346c21a479125b8d17b4ea05942a4c0632a51e7fe3d78990cd27") // session_id
         expect(
-            a.generateBlindedId(id, "1615317ca1d8ecdf12dad1bbf1d28d3a90c94fc0010043a7fdc1609ad1c5d111").toString()
-        ).toBe("1562b2368a1d5452cc25c713b9add4f29405e5e58f6c4aa83fde602a7308bae794")
+            a.generateBlindedId(id, "39016f991400c35a46e11e06cb2a64d6d8ab6652e484a556b14f7cf57ed7e73a").toString() // pubkey
+        ).toBe("15a507e901b27d2f85606fd73f082f25ec79f0a92bd5efc586cd1c005f3ab56170") // expected
     })
 })
 
