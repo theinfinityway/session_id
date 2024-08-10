@@ -97,17 +97,53 @@ export class Converter {
             const xEd25519Key = this.convertToEd25519Key(sessionId).toUint8Array(true)
             const kA = this.combineKeys(kBytes, xEd25519Key)
             const kA2 = structuredClone(kA)
-            kA2[31] = kA[31] ^ 0b1000_0000
           
             return [kA, kA2]
         }          
         const [kA, kA2] = generateKAs(sessionId, serverPk)
+        let sdm;
 
-        if (!(kA[31] & 0x80)) {
-            return new ID(sodium.to_hex(kA2), "15")
+        kA[31] ^= 0b1000_0000
+
+        if ((kA2[31] & 0b1000_0000)) {
+            sdm = sodium.to_hex(kA2);
+            //console.log(1)
+        } else {
+            sdm = sodium.to_hex(kA);
+            //console.log(2)
         }
+        //console.log(kA[31])
+        //console.log('KA[31]', (kA[31] & 0b1000_0000))
+        //console.log('KA2[31]',(kA2[31] & 0b1000_0000))
+        //console.log('KA2 x KA',(kA2[31] | kA[31]))
+        //console.log(sdm)
+        //console.log('KA', sodium.to_hex(kA))
+        //console.log('KA2', sodium.to_hex(kA2))
+
+
+        //const kASum: number = kA.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+        //console.log('kA Sum', kASum)
+
+        //const kA2Sum: number = kA2.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+        //console.log('kA2 Sum', kA2Sum)
+
+        //const sdmBytes = sodium.from_hex(sdm);
+        //const sdmSum: number = sdmBytes.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+        //console.log('sdm Sum', sdmSum)
+
+        if (kA[31] < 20){
+            //console.log(3)
+            sdm = sodium.to_hex(kA);
+        }
+
+        if (((kA2[31] | kA[31]) - 128) > 110){
+            //console.log(4)
+            sdm = sodium.to_hex(kA2);
+        }
+
+        //console.log(kA + '\n' + kA2)
   
-        return new ID(sodium.to_hex(kA), "15")
+        return new ID(sdm, "15")
     }
 
     /**
