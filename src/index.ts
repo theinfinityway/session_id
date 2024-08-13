@@ -75,15 +75,14 @@ export class Converter {
         const xEd25519Key = sodium.crypto_sign_ed25519_pk_to_curve25519(key.toUint8Array(true));
         return new ID(sodium.to_hex(xEd25519Key))
     }
-    private combineKeys = (lhsKeyBytes: Uint8Array, rhsKeyBytes: Uint8Array): Uint8Array => {
-        return sodium.crypto_scalarmult_ed25519_noclamp(lhsKeyBytes, rhsKeyBytes)
-    }
+
     // CREDIT: https://github.com/VityaSchel/bunsogs/blob/main/src/blinding.ts
     /**
      * Generate Blinded ID from Session ID for server public key (15xx, legacy format)
      * @category Blinded ID
      * @param sessionId Session ID
      * @param serverPk  Server public key
+     * @deprecated Algorithm is unstable
      * @author hloth
      */
     generateBlindedId(sessionId: ID, serverPk: string): ID {
@@ -95,7 +94,7 @@ export class Converter {
         const generateKAs = (sessionId: ID, serverPk: string): Uint8Array[] => {
             const kBytes = generateBlindingFactor(serverPk)
             const xEd25519Key = this.convertToEd25519Key(sessionId).toUint8Array(true)
-            const kA = this.combineKeys(kBytes, xEd25519Key)
+            const kA = sodium.crypto_scalarmult_ed25519_noclamp(kBytes, xEd25519Key)
             const kA2 = structuredClone(kA)
             kA2[31] = kA[31] ^ 0b1000_0000
           
@@ -103,11 +102,18 @@ export class Converter {
         }          
         const [kA, kA2] = generateKAs(sessionId, serverPk)
 
-        if (!(kA[31] & 0x80)) {
+        if (!!(kA[31] & 0x80)) {
             return new ID(sodium.to_hex(kA2), "15")
         }
   
         return new ID(sodium.to_hex(kA), "15")
+        /*let a = new ID(sodium.to_hex(kA), "15").toString()
+        const msn = parseInt(a[64], 16);
+        if ((msn & 0x8) == 8) {
+            return new ID(a.slice(0, 64) + (msn & 0x7) + a.slice(65))
+        } else {
+            return new ID(a)
+        }*/
     }
 
     /**
@@ -127,20 +133,9 @@ export class Converter {
             const serverPkHash = sodium.crypto_generichash_final(hash, 64)
             return sodium.crypto_core_ed25519_scalar_reduce(serverPkHash)
         }
-        const generateKAs = (sessionId: ID, serverPk: string): Uint8Array[] => {
-            const kBytes = generateBlindingFactor(sessionId.toString(), serverPk)
-            const xEd25519Key = this.convertToEd25519Key(sessionId).toUint8Array(true)
-            const kA = this.combineKeys(kBytes, xEd25519Key)
-            const kA2 = structuredClone(kA)
-            kA2[31] = kA[31] ^ 0b1000_0000
-          
-            return [kA, kA2]
-        }
-        const [kA, kA2] = generateKAs(sessionId, serverPk)
-
-        if (!(kA[31] & 0x80)) {
-            return new ID(sodium.to_hex(kA2), "25")
-        }
+        const kBytes = generateBlindingFactor(sessionId.toString(), serverPk)
+        const xEd25519Key = this.convertToEd25519Key(sessionId).toUint8Array(true)
+        const kA = sodium.crypto_scalarmult_ed25519_noclamp(kBytes, xEd25519Key)
   
         return new ID(sodium.to_hex(kA), "25")
     }
