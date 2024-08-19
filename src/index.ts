@@ -63,7 +63,7 @@ export class Converter {
      */
     convertToEd25519Key(key: ID): ID {
         const xEd25519Key = crypto_sign_curve25519_pk_to_ed25519(key.toUint8Array(true));
-        return new ID(sodium.to_hex(xEd25519Key))
+        return new ID(sodium.to_hex(xEd25519Key), "00")
     }
 
     /**
@@ -82,10 +82,9 @@ export class Converter {
      * @category Blinded ID
      * @param sessionId Session ID
      * @param serverPk  Server public key
-     * @deprecated Algorithm is unstable
      * @author hloth
      */
-    generateBlindedId(sessionId: ID, serverPk: string): ID {
+    generateBlindedId(sessionId: ID, serverPk: string): ID[] {
         const generateBlindingFactor = (serverPk: string): Uint8Array => {
             const hexServerPk = sodium.from_hex(serverPk)
             const serverPkHash = sodium.crypto_generichash(64, hexServerPk)
@@ -102,11 +101,15 @@ export class Converter {
         }          
         const [kA, kA2] = generateKAs(sessionId, serverPk)
 
-        if (!!(kA[31] & 0x80)) {
+        return [
+            new ID(sodium.to_hex(kA), "15"),
+            new ID(sodium.to_hex(kA2), "15")
+        ]
+
+        /*if (!!(kA[31] & 0b1000_0000)) {
             return new ID(sodium.to_hex(kA2), "15")
         }
-  
-        return new ID(sodium.to_hex(kA), "15")
+        return new ID(sodium.to_hex(kA), "15")*/
         /*let a = new ID(sodium.to_hex(kA), "15").toString()
         const msn = parseInt(a[64], 16);
         if ((msn & 0x8) == 8) {
@@ -138,5 +141,20 @@ export class Converter {
         const kA = sodium.crypto_scalarmult_ed25519_noclamp(kBytes, xEd25519Key)
   
         return new ID(sodium.to_hex(kA), "25")
+    }
+
+    /**
+     * Get Session ID from legacy Blinded ID and server public key
+     * @param blindedId Blinded ID
+     * @param serverPk  Server public key
+     */
+    unblind15(blindedId: ID, serverPk: string): ID {
+        const generateInvBlindingFactor = (serverPk: string): Uint8Array => {
+            const hexServerPk = sodium.from_hex(serverPk)
+            const serverPkHash = sodium.crypto_generichash(64, hexServerPk)
+            return sodium.crypto_core_ed25519_scalar_invert(sodium.crypto_core_ed25519_scalar_reduce(serverPkHash))
+        }
+        let ed = sodium.crypto_scalarmult_ed25519_noclamp(generateInvBlindingFactor(serverPk), blindedId.toUint8Array(true))
+        return new ID(sodium.to_hex(sodium.crypto_sign_ed25519_pk_to_curve25519(ed)))
     }
 }

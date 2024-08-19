@@ -10,9 +10,6 @@
 </div>
 <hr />
 
->[!WARNING]
-> At the moment, the library is in its "raw" form and does not have normal documentation, so please do not use it in production versions of your products. The author assumes no responsibility for the use/consequences of using this library. You have been warned!
-
 ## Examples
 ### Convert to Ed25519
 ```ts
