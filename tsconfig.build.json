@@ -24,5 +24,5 @@
       "noPropertyAccessFromIndexSignature": false,
       "outDir": "dist",
     },
-    "include": ["src/index.ts", "src/curve2ed.ts"]
+    "include": ["src/index.ts", "src/utils.ts"]
 }

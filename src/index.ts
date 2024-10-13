@@ -1,13 +1,9 @@
-import { crypto_sign_curve25519_pk_to_ed25519 } from './curve2ed';
-import sodium from 'libsodium-wrappers-sumo'
-await sodium.ready
+import { ed25519, edwardsToMontgomery } from "@noble/curves/ed25519"
+import { blake2b } from "@noble/hashes/blake2b"
+import { invertScalar, reduce64 } from "./utils"
 
 /**
  * Class for representing Session ID
- * @example
- * ```ts
- * new ID("05fc331b505085fecc2188707c1da8002ee3edc6eb5591e36ded40a4669a94ab11")
- * ```
  */
 export class ID {
     /** ID prefix */
@@ -42,119 +38,115 @@ export class ID {
      * Get ID as Uint8Array
      * @param excludePrefix Prefix exclusion flag (default - false)
      */
-    toUint8Array(excludePrefix?: boolean): Uint8Array {
-        return sodium.from_hex((excludePrefix ? "" : this.prefix) + this.id)
+    toUint8Array(excludePrefix?: boolean): Buffer {
+        return Buffer.from((excludePrefix ? "" : this.prefix) + this.id, "hex")
     }
 }
 
 /**
- * Converter class
- * @hideconstructor
- * @example
- * ```ts
- * new Converter().convertToEd25519Key(...)
- * ```
+ * Converts Session ID (Curve25519) to Ed25519 public key.
+ * @param key Session ID
+ * @returns {ID}
  */
-export class Converter {
-    /**
-     * Converts Curve25519 public key back to Ed25519 public key.
-     * @category Curve <-> Edwards
-     * @param key Session ID
-     */
-    convertToEd25519Key(key: ID): ID {
-        const xEd25519Key = crypto_sign_curve25519_pk_to_ed25519(key.toUint8Array(true));
-        return new ID(sodium.to_hex(xEd25519Key), "00")
+export const convertToEd25519Key = (key: ID): ID => {
+    let f = ed25519.CURVE.Fp
+
+    let x = f.fromBytes(key.toUint8Array(true))
+    let a = f.add(x, f.ONE)
+
+    a = f.inv(a)
+    a = f.mul(a, f.sub(x, f.ONE))
+
+    return new ID(Buffer.from(f.toBytes(a)).toString("hex"), "00")
+}
+
+/**
+ * Converts Ed25519 public key to Session ID (Curve25519)
+ * @param key 
+ * @returns {ID}
+ */
+export const convertToCurve25519Key = (key: ID): ID => {
+    let a = Buffer.from(edwardsToMontgomery(key.toUint8Array(true)))
+    return new ID(a.toString("hex"))
+}
+
+/**
+ * Generate Blinded IDs from Session ID for server public key (15xx, legacy format)
+ * @param sessionId Session ID
+ * @param serverPk Server public key
+ * @returns {ID[]}
+ */
+export const generateBlindedId15 = (sessionId: ID, serverPk: string): ID[] => {
+    const generateBlindingFactor = (serverPk: string): Buffer => {
+        const hexServerPk = Buffer.from(serverPk, "hex")
+        let hash = blake2b.create({
+            dkLen: 64
+        })
+        hash.update(hexServerPk)
+
+        const serverPkHash = Buffer.from(hash.digest())
+        return reduce64(serverPkHash)
     }
 
-    /**
-     * Converts Ed25519 public key to Curve25519 public key
-     * @category Curve <-> Edwards
-     * @param key Ed25519 public key
-     */
-    convertToCurve25519Key(key: ID): ID {
-        const xEd25519Key = sodium.crypto_sign_ed25519_pk_to_curve25519(key.toUint8Array(true));
-        return new ID(sodium.to_hex(xEd25519Key))
+    const kBytes = generateBlindingFactor(serverPk)
+    const xEd25519Key = ed25519.ExtendedPoint.fromHex(convertToEd25519Key(sessionId).toUint8Array(true))
+    const kA = Buffer.from(xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toRawBytes())
+    const kA2 = Buffer.from(structuredClone(kA))
+    kA2[31] = kA[31] ^ 0b1000_0000
+
+    return [
+        new ID(kA.toString("hex"), "15"),
+        new ID(kA2.toString("hex"), "15")
+    ]
+}
+
+/**
+ * Generate Blinded ID from Session ID for server public key (25xx, new format)
+ * @param sessionId Session ID
+ * @param serverPk Server public key
+ * @returns {ID}
+ */
+export const generateBlindedId25 = (sessionId: ID, serverPk: string): ID => {
+    const generateBlindingFactor = (id: string, serverPk: string): Buffer => {
+        const hexServerPk = Buffer.from(serverPk, "hex")
+        const hexId = Buffer.from(id, "hex")
+
+        let hash = blake2b.create({
+            dkLen: 64
+        })
+        hash.update(hexId)
+        hash.update(hexServerPk)
+
+        const serverPkHash = Buffer.from(hash.digest())
+        return reduce64(serverPkHash)
     }
 
-    // CREDIT: https://github.com/VityaSchel/bunsogs/blob/main/src/blinding.ts
-    /**
-     * Generate Blinded ID from Session ID for server public key (15xx, legacy format)
-     * @category Blinded ID
-     * @param sessionId Session ID
-     * @param serverPk  Server public key
-     * @author hloth
-     */
-    generateBlindedId(sessionId: ID, serverPk: string): ID[] {
-        const generateBlindingFactor = (serverPk: string): Uint8Array => {
-            const hexServerPk = sodium.from_hex(serverPk)
-            const serverPkHash = sodium.crypto_generichash(64, hexServerPk)
-            return sodium.crypto_core_ed25519_scalar_reduce(serverPkHash)
-        }
-        const generateKAs = (sessionId: ID, serverPk: string): Uint8Array[] => {
-            const kBytes = generateBlindingFactor(serverPk)
-            const xEd25519Key = this.convertToEd25519Key(sessionId).toUint8Array(true)
-            const kA = sodium.crypto_scalarmult_ed25519_noclamp(kBytes, xEd25519Key)
-            const kA2 = structuredClone(kA)
-            kA2[31] = kA[31] ^ 0b1000_0000
-          
-            return [kA, kA2]
-        }          
-        const [kA, kA2] = generateKAs(sessionId, serverPk)
+    const kBytes = generateBlindingFactor(sessionId.toString(), serverPk)
+    const xEd25519Key = ed25519.ExtendedPoint.fromHex(convertToEd25519Key(sessionId).toUint8Array(true))
+    const kA = Buffer.from(xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toRawBytes())
 
-        return [
-            new ID(sodium.to_hex(kA), "15"),
-            new ID(sodium.to_hex(kA2), "15")
-        ]
+    return new ID(kA.toString("hex"), "25")
+}
 
-        /*if (!!(kA[31] & 0b1000_0000)) {
-            return new ID(sodium.to_hex(kA2), "15")
-        }
-        return new ID(sodium.to_hex(kA), "15")*/
-        /*let a = new ID(sodium.to_hex(kA), "15").toString()
-        const msn = parseInt(a[64], 16);
-        if ((msn & 0x8) == 8) {
-            return new ID(a.slice(0, 64) + (msn & 0x7) + a.slice(65))
-        } else {
-            return new ID(a)
-        }*/
+/**
+ * Get Session ID from legacy (15xx) Blinded ID and server public key
+ * @param blindedId Blinded ID
+ * @param serverPk Server public key
+ * @returns {ID}
+ */
+export const unblind15 = (blindedId: ID, serverPk: string): ID => {
+    const generateInvBlindingFactor = (serverPk: string): Buffer => {
+        const hexServerPk = Buffer.from(serverPk, "hex")
+        let hash = blake2b.create({
+            dkLen: 64
+        })
+        hash.update(hexServerPk)
+
+        const serverPkHash = Buffer.from(hash.digest())
+        return Buffer.from(invertScalar(reduce64(serverPkHash)))
     }
-
-    /**
-     * Generate Blinded ID from Session ID for server public key (25xx, new format)
-     * @category Blinded ID
-     * @param sessionId Session ID
-     * @param serverPk  Server public key
-     * @experimental
-     */
-    generateBlindedId25(sessionId: ID, serverPk: string): ID {
-        const generateBlindingFactor = (id: string, serverPk: string): Uint8Array => {
-            const hexServerPk = sodium.from_hex(serverPk)
-            const hexId = sodium.from_hex(id)
-            let hash = sodium.crypto_generichash_init(null, 64)
-            sodium.crypto_generichash_update(hash, hexId)
-            sodium.crypto_generichash_update(hash, hexServerPk)
-            const serverPkHash = sodium.crypto_generichash_final(hash, 64)
-            return sodium.crypto_core_ed25519_scalar_reduce(serverPkHash)
-        }
-        const kBytes = generateBlindingFactor(sessionId.toString(), serverPk)
-        const xEd25519Key = this.convertToEd25519Key(sessionId).toUint8Array(true)
-        const kA = sodium.crypto_scalarmult_ed25519_noclamp(kBytes, xEd25519Key)
-  
-        return new ID(sodium.to_hex(kA), "25")
-    }
-
-    /**
-     * Get Session ID from legacy Blinded ID and server public key
-     * @param blindedId Blinded ID
-     * @param serverPk  Server public key
-     */
-    unblind15(blindedId: ID, serverPk: string): ID {
-        const generateInvBlindingFactor = (serverPk: string): Uint8Array => {
-            const hexServerPk = sodium.from_hex(serverPk)
-            const serverPkHash = sodium.crypto_generichash(64, hexServerPk)
-            return sodium.crypto_core_ed25519_scalar_invert(sodium.crypto_core_ed25519_scalar_reduce(serverPkHash))
-        }
-        let ed = sodium.crypto_scalarmult_ed25519_noclamp(generateInvBlindingFactor(serverPk), blindedId.toUint8Array(true))
-        return new ID(sodium.to_hex(sodium.crypto_sign_ed25519_pk_to_curve25519(ed)))
-    }
+    
+    const point = ed25519.ExtendedPoint.fromHex(blindedId.toUint8Array(true))
+    let ed = Buffer.from(point.multiply(ed25519.CURVE.Fp.fromBytes(generateInvBlindingFactor(serverPk))).toRawBytes())
+    return convertToCurve25519Key(new ID(ed.toString("hex")))
 }

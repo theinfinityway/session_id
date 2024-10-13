@@ -1,6 +1,6 @@
 {
   "name": "@li0ard/session_id",
-  "version": "1.3.5",
+  "version": "1.4.0",
   "description": "",
   "type": "module",
   "main": "dist/index.js",
@@ -9,16 +9,16 @@
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "clean": "rm -rf dist/",
-    "docs": "rm -rf docs/ && typedoc --readme README.md --name \"Session ID\" --out ./docs/ --tsconfig tsconfig.json src/"
+    "docs": "rm -rf docs/ && typedoc --options .config/typedoc/config.cjs"
   },
   "author": "li0ard",
   "license": "MIT",
   "dependencies": {
-    "libsodium-wrappers-sumo": "^0.7.13"
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.5.0"
   },
   "devDependencies": {
     "@types/bun": "^1.1.6",
-    "@types/libsodium-wrappers-sumo": "^0.7.8",
     "typedoc": "^0.26.5"
   }
 }
