@@ -1,8 +1,7 @@
-name: Publish
+name: Publish (JSR)
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
 
 jobs:
   publish:
@@ -20,4 +19,4 @@ jobs:
         run: bun i
 
       - name: Publish package
-        run: bunx jsr publish
+        run: bunx --bun jsr publish

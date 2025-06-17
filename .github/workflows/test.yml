@@ -1,28 +1,20 @@
-name: Test
+name: Tests
 
 on:
-  workflow_dispatch:
-  pull_request:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    paths-ignore:
+      - '*.md' # ignore changes to readmes
+  pull_request:
+    branches: [ main ]
 
 jobs:
   test:
+    name: test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
 
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: 'Install Dependencies'
-        run: |
-          bun install
-
-      - name: 'Test'
-        run: |
-          bun test
+      - run: bun i
+      - run: bun test
