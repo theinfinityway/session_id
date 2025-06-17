@@ -1,24 +1,38 @@
 {
   "name": "@li0ard/session_id",
-  "version": "1.4.0",
-  "description": "",
-  "type": "module",
+  "version": "2.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist/"],
+  "type": "module",
+  "author": "li0ard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theinfinityway/session_id.git"
+  },
+  "bugs": {
+    "url": "https://github.com/theinfinityway/session_id/issues"
+  },
+  "homepage": "https://github.com/theinfinityway/session_id#readme",
+  "description": "Pure JS library for working with Session users IDs",
+  "license": "MIT",
   "scripts": {
-    "build": "tsc --project tsconfig.build.json",
-    "clean": "rm -rf dist/",
+    "build": "rm -rf dist/ && tsc --project tsconfig.build.json",
     "docs": "rm -rf docs/ && typedoc --options .config/typedoc/config.cjs"
   },
-  "author": "li0ard",
-  "license": "MIT",
-  "dependencies": {
-    "@noble/curves": "^1.6.0",
-    "@noble/hashes": "^1.5.0"
-  },
   "devDependencies": {
-    "@types/bun": "^1.1.6",
-    "typedoc": "^0.26.5"
+    "@types/bun": "^1.2.16",
+    "typedoc": "^0.28.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": ["dist/"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": ["session", "crypto", "oxen"],
+  "dependencies": {
+    "@noble/curves": "^1.9.2",
+    "@noble/hashes": "^1.8.0"
   }
 }

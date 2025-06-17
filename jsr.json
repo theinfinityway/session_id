@@ -1,8 +1,8 @@
 {
     "name": "@li0ard/session-id",
-    "version": "1.4.0",
+    "version": "2.0.0",
     "exports": "./src/index.ts",
     "publish": {
-        "include": ["src", "README.md", "LICENSE", "package.json"]
+        "include": ["src", "README.md", "LICENSE", "package.json", "CITATION.cff"]
     }
 }

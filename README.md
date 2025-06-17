@@ -10,11 +10,38 @@
 </div>
 <hr />
 
+## Installation
+
+```bash
+# from NPM
+npm i @li0ard/session_id
+
+# from JSR
+bunx jsr i @li0ard/session_id
+```
+
 ## Examples
 ### Convert to Ed25519
 ```ts
-import { convertToEd25519Key, ID } from "@li0ard/session_id"
+import { convertToEd25519Key } from "@li0ard/session_id"
 
-let id = new ID("05d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40")
-console.log(convertToEd25519Key(id).toString(true))
+let id = "d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40"
+console.log(convertToEd25519Key(id))
+```
+
+### Generate blinded id (legacy format) from Session ID
+```ts
+import { generateBlindedId15 } from "@li0ard/session_id"
+
+let id = "d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40"
+console.log(generateBlindedId15(id))
+```
+
+### Unblind blinded id in legacy format
+```ts
+import { unblind15 } from "@li0ard/session_id"
+
+let id = "264c132e2e72a9c50b7a981eac11a48b3e51ae5a0ea45ea47deb519a3fa76612"
+let pk = "ac9c872e525a58970df6971655abb944a30b38853442a793b29843d20795e840"
+console.log(unblind15(id, pk))
 ```

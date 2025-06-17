@@ -1,102 +1,71 @@
 import { ed25519, edwardsToMontgomery } from "@noble/curves/ed25519"
-import { blake2b } from "@noble/hashes/blake2b"
-import { invertScalar, reduce64 } from "./utils"
+import { blake2b } from "@noble/hashes/blake2"
+import { invertScalar, reduceScalar } from "./utils"
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils"
 
-/**
- * Class for representing Session ID
- */
-export class ID {
-    /** ID prefix */
-    prefix: string = "05"
-    /** ID value without prefix */
-    id: string
-
-    /**
-     * @param id Session ID
-     * @param prefix Needed prefix (even if specified in id)
-     */
-    constructor(id: string, prefix?: string) {
-        if(id.length == 66) {
-            this.prefix = id.substring(0,2)
-            this.id = id.substring(2)
-        }
-        else {
-            this.id = id
-        }
-        if(prefix) {
-            this.prefix = prefix
-        }
-    }
-    /**
-     * Get ID as string
-     * @param excludePrefix Prefix exclusion flag (default - false)
-     */
-    toString(excludePrefix?: boolean): string {
-        return (excludePrefix ? "" : this.prefix) + this.id
-    }
-    /**
-     * Get ID as Uint8Array
-     * @param excludePrefix Prefix exclusion flag (default - false)
-     */
-    toUint8Array(excludePrefix?: boolean): Buffer {
-        return Buffer.from((excludePrefix ? "" : this.prefix) + this.id, "hex")
-    }
+/** Prefixes for IDs */
+export enum IDPrefix {
+    DEFAULT = "05",
+    BLINDED = "15",
+    BLINDED_NEW = "25"
 }
 
 /**
- * Converts Session ID (Curve25519) to Ed25519 public key.
- * @param key Session ID
- * @returns {ID}
+ * Convert Curve25519 public key (Session ID) to Ed25519 public key.
+ * @param key Curve25519 public key
+ * @returns {Uint8Array}
  */
-export const convertToEd25519Key = (key: ID): ID => {
+export const convertToEd25519Key = (key: string | Uint8Array): Uint8Array => {
+    if(typeof key == "string") key = hexToBytes(key);
+    if(key.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
     let f = ed25519.CURVE.Fp
-
-    let x = f.fromBytes(key.toUint8Array(true))
+    let x = f.fromBytes(key)
     let a = f.add(x, f.ONE)
 
-    a = f.inv(a)
-    a = f.mul(a, f.sub(x, f.ONE))
+    a = f.mul(f.inv(a), f.sub(x, f.ONE))
 
-    return new ID(Buffer.from(f.toBytes(a)).toString("hex"), "00")
+    return f.toBytes(a)
 }
 
 /**
- * Converts Ed25519 public key to Session ID (Curve25519)
- * @param key 
- * @returns {ID}
+ * Convert Ed25519 public key to Curve25519 public key (Session ID)
+ * @param key Ed25519 public key
+ * @returns {Uint8Array}
  */
-export const convertToCurve25519Key = (key: ID): ID => {
-    let a = Buffer.from(edwardsToMontgomery(key.toUint8Array(true)))
-    return new ID(a.toString("hex"))
+export const convertToCurve25519Key = (key: string | Uint8Array): Uint8Array => {
+    if(typeof key == "string") key = hexToBytes(key);
+    if(key.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+
+    return edwardsToMontgomery(key)
 }
 
 /**
  * Generate Blinded IDs from Session ID for server public key (15xx, legacy format)
  * @param sessionId Session ID
  * @param serverPk Server public key
- * @returns {ID[]}
+ * @returns {Uint8Array[]}
  */
-export const generateBlindedId15 = (sessionId: ID, serverPk: string): ID[] => {
-    const generateBlindingFactor = (serverPk: string): Buffer => {
-        const hexServerPk = Buffer.from(serverPk, "hex")
-        let hash = blake2b.create({
-            dkLen: 64
-        })
-        hash.update(hexServerPk)
+export const generateBlindedId15 = (sessionId: string | Uint8Array, serverPk: string): Uint8Array[] => {
+    if(typeof sessionId == "string") sessionId = hexToBytes(sessionId);
+    if(sessionId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
 
-        const serverPkHash = Buffer.from(hash.digest())
-        return reduce64(serverPkHash)
+    const generateBlindingFactor = (serverPk: string): Uint8Array => {
+        return reduceScalar(blake2b(hexToBytes(serverPk), {
+            dkLen: 64
+        }))
     }
 
     const kBytes = generateBlindingFactor(serverPk)
-    const xEd25519Key = ed25519.ExtendedPoint.fromHex(convertToEd25519Key(sessionId).toUint8Array(true))
-    const kA = Buffer.from(xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toRawBytes())
-    const kA2 = Buffer.from(structuredClone(kA))
+    const xEd25519Key = ed25519.Point.fromHex(convertToEd25519Key(sessionId))
+    const kA = xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toBytes()
+    const kA2 = new Uint8Array(32)
+    kA2.set(kA)
+    
     kA2[31] = kA[31] ^ 0b1000_0000
 
     return [
-        new ID(kA.toString("hex"), "15"),
-        new ID(kA2.toString("hex"), "15")
+        kA,
+        kA2
     ]
 }
 
@@ -104,49 +73,46 @@ export const generateBlindedId15 = (sessionId: ID, serverPk: string): ID[] => {
  * Generate Blinded ID from Session ID for server public key (25xx, new format)
  * @param sessionId Session ID
  * @param serverPk Server public key
- * @returns {ID}
+ * @returns {Uint8Array}
  */
-export const generateBlindedId25 = (sessionId: ID, serverPk: string): ID => {
-    const generateBlindingFactor = (id: string, serverPk: string): Buffer => {
-        const hexServerPk = Buffer.from(serverPk, "hex")
-        const hexId = Buffer.from(id, "hex")
+export const generateBlindedId25 = (sessionId: string | Uint8Array, serverPk: string): Uint8Array => {
+    if(typeof sessionId == "string") sessionId = hexToBytes(sessionId);
+    if(sessionId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
 
+    const generateBlindingFactor = (id: string, serverPk: string): Uint8Array => {
         let hash = blake2b.create({
             dkLen: 64
         })
-        hash.update(hexId)
-        hash.update(hexServerPk)
+        hash.update(hexToBytes("05" + id))
+        hash.update(hexToBytes(serverPk))
 
-        const serverPkHash = Buffer.from(hash.digest())
-        return reduce64(serverPkHash)
+        return reduceScalar(hash.digest())
     }
 
-    const kBytes = generateBlindingFactor(sessionId.toString(), serverPk)
-    const xEd25519Key = ed25519.ExtendedPoint.fromHex(convertToEd25519Key(sessionId).toUint8Array(true))
-    const kA = Buffer.from(xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toRawBytes())
+    const kBytes = generateBlindingFactor(bytesToHex(sessionId), serverPk)
+    const xEd25519Key = ed25519.Point.fromHex(convertToEd25519Key(sessionId))
+    const kA = xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toBytes()
 
-    return new ID(kA.toString("hex"), "25")
+    return kA
 }
 
 /**
  * Get Session ID from legacy (15xx) Blinded ID and server public key
  * @param blindedId Blinded ID
  * @param serverPk Server public key
- * @returns {ID}
+ * @returns {Uint8Array}
  */
-export const unblind15 = (blindedId: ID, serverPk: string): ID => {
-    const generateInvBlindingFactor = (serverPk: string): Buffer => {
-        const hexServerPk = Buffer.from(serverPk, "hex")
-        let hash = blake2b.create({
-            dkLen: 64
-        })
-        hash.update(hexServerPk)
+export const unblind15 = (blindedId: string | Uint8Array, serverPk: string): Uint8Array => {
+    if(typeof blindedId == "string") blindedId = hexToBytes(blindedId);
+    if(blindedId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
 
-        const serverPkHash = Buffer.from(hash.digest())
-        return Buffer.from(invertScalar(reduce64(serverPkHash)))
+    const generateInvBlindingFactor = (serverPk: string): Uint8Array => {
+        return invertScalar(reduceScalar(blake2b(hexToBytes(serverPk), {
+            dkLen: 64
+        })))
     }
     
-    const point = ed25519.ExtendedPoint.fromHex(blindedId.toUint8Array(true))
-    let ed = Buffer.from(point.multiply(ed25519.CURVE.Fp.fromBytes(generateInvBlindingFactor(serverPk))).toRawBytes())
-    return convertToCurve25519Key(new ID(ed.toString("hex")))
+    const point = ed25519.Point.fromHex(blindedId)
+    let ed = point.multiply(ed25519.CURVE.Fp.fromBytes(generateInvBlindingFactor(serverPk))).toBytes()
+    return convertToCurve25519Key(ed)
 }
