@@ -2,6 +2,7 @@ import { ed25519, edwardsToMontgomery } from "@noble/curves/ed25519"
 import { blake2b } from "@noble/hashes/blake2"
 import { invertScalar, reduceScalar } from "./utils"
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils"
+import { numberToBytesBE } from "@noble/curves/utils"
 
 /** Prefixes for IDs */
 export enum IDPrefix {
@@ -115,4 +116,28 @@ export const unblind15 = (blindedId: string | Uint8Array, serverPk: string): Uin
     const point = ed25519.Point.fromHex(blindedId)
     let ed = point.multiply(ed25519.CURVE.Fp.fromBytes(generateInvBlindingFactor(serverPk))).toBytes()
     return convertToCurve25519Key(ed)
+}
+
+/**
+ * Map Session ID into a 64-bit "swarm space" value
+ * 
+ * Swarm you belong to is whichever one has swarm id closest to this derived value
+ * @param sessionId Session ID
+ * @returns {Uint8Array}
+ */
+export const generateSwarmSpace = (sessionId: string | Uint8Array): Uint8Array => {
+    if(typeof sessionId == "string") sessionId = hexToBytes(sessionId);
+    if(sessionId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+
+    let res = 0n;
+    for (let i = 0; i < 32; i += 8) {
+        const buf = sessionId.subarray(i, i + 8);
+        let value = 0n;
+        for (let j = 0; j < 8; ++j) {
+            value = (value << 8n) | BigInt(buf[j]);
+        }
+        res ^= value;
+    }
+
+    return numberToBytesBE(res, 8)
 }

@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test"
-import { convertToCurve25519Key, convertToEd25519Key, generateBlindedId15, generateBlindedId25, unblind15 } from "../src";
+import { convertToCurve25519Key, convertToEd25519Key, generateBlindedId15, generateBlindedId25, generateSwarmSpace, unblind15 } from "../src";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
 
 describe("Curve <-> Edwards", () => {
@@ -122,5 +122,25 @@ describe("Blinded ID (new)", () => {
         expect(
             bytesToHex(generateBlindedId25(id2, "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"))
         ).toBe("a69cc6884530bf8498d22892e563716c4742f2845a7eb608de2aecbe7b6b5996")
+    })
+})
+
+describe("Swarm-space", () => {
+    test("Generation #1", () => {
+        expect(
+            bytesToHex(generateSwarmSpace("fc331b505085fecc2188707c1da8002ee3edc6eb5591e36ded40a4669a94ab11"))
+        ).toBe("d31609a18228b69e")
+    })
+
+    test("Generation #2", () => {
+        expect(
+            bytesToHex(generateSwarmSpace("7aeb66e45660c3bdfb7c62706f6440226af43ec13f3b6f899c1dd4db1b8fce5b"))
+        ).toBe("777eee8e1db0224d")
+    })
+
+    test("Generation #3", () => {
+        expect(
+            bytesToHex(generateSwarmSpace("d871fc80ca007eed9b2f4df72853e2a2d5465a92fcb1889fb5c84aa2833b3b40"))
+        ).toBe("23d0a1479dd92f90")
     })
 })
