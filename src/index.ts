@@ -1,8 +1,8 @@
-import { ed25519, edwardsToMontgomery } from "@noble/curves/ed25519"
-import { blake2b } from "@noble/hashes/blake2"
-import { invertScalar, reduceScalar } from "./utils"
-import { bytesToHex, hexToBytes } from "@noble/hashes/utils"
-import { numberToBytesBE } from "@noble/curves/utils"
+import { ed25519, edwardsToMontgomeryPub } from "@noble/curves/ed25519";
+import { blake2b } from "@noble/hashes/blake2";
+import { invertScalar, reduceScalar, mulPointByScalar } from "./utils.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
+import { numberToBytesBE } from "@noble/curves/utils";
 
 /** Prefixes for IDs */
 export enum IDPrefix {
@@ -11,90 +11,54 @@ export enum IDPrefix {
     BLINDED_NEW = "25"
 }
 
-/**
- * Convert Curve25519 public key (Session ID) to Ed25519 public key.
- * @param key Curve25519 public key
- * @returns {Uint8Array}
- */
+const convertAndValidateID = (key: string | Uint8Array): Uint8Array => {
+    if(typeof key == "string") key = hexToBytes(key);
+    if(key.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+    return key;
+}
+
+/** Convert Curve25519 public key (Session ID) to Ed25519 public key */
 export const convertToEd25519Key = (key: string | Uint8Array): Uint8Array => {
-    if(typeof key == "string") key = hexToBytes(key);
-    if(key.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
-    let f = ed25519.CURVE.Fp
-    let x = f.fromBytes(key)
-    let a = f.add(x, f.ONE)
+    key = convertAndValidateID(key);
+    const f = ed25519.CURVE.Fp;
+    const x = f.fromBytes(key);
 
-    a = f.mul(f.inv(a), f.sub(x, f.ONE))
-
-    return f.toBytes(a)
+    return f.toBytes(f.mul(f.inv(f.add(x, f.ONE)), f.sub(x, f.ONE)))
 }
 
-/**
- * Convert Ed25519 public key to Curve25519 public key (Session ID)
- * @param key Ed25519 public key
- * @returns {Uint8Array}
- */
-export const convertToCurve25519Key = (key: string | Uint8Array): Uint8Array => {
-    if(typeof key == "string") key = hexToBytes(key);
-    if(key.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+/** Convert Ed25519 public key to Curve25519 public key (Session ID) */
+export const convertToCurve25519Key = (key: string | Uint8Array): Uint8Array => edwardsToMontgomeryPub(convertAndValidateID(key));
 
-    return edwardsToMontgomery(key)
-}
+const generateBlindingFactor = (input: string): Uint8Array => reduceScalar(blake2b(hexToBytes(input), { dkLen: 64 }));
 
 /**
  * Generate Blinded IDs from Session ID for server public key (15xx, legacy format)
  * @param sessionId Session ID
  * @param serverPk Server public key
- * @returns {Uint8Array[]}
  */
 export const generateBlindedId15 = (sessionId: string | Uint8Array, serverPk: string): Uint8Array[] => {
-    if(typeof sessionId == "string") sessionId = hexToBytes(sessionId);
-    if(sessionId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+    sessionId = convertAndValidateID(sessionId);
 
-    const generateBlindingFactor = (serverPk: string): Uint8Array => {
-        return reduceScalar(blake2b(hexToBytes(serverPk), {
-            dkLen: 64
-        }))
-    }
-
-    const kBytes = generateBlindingFactor(serverPk)
-    const xEd25519Key = ed25519.Point.fromHex(convertToEd25519Key(sessionId))
-    const kA = xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toBytes()
-    const kA2 = new Uint8Array(32)
-    kA2.set(kA)
+    const kBytes = generateBlindingFactor(serverPk);
+    const kA = mulPointByScalar(convertToEd25519Key(sessionId), kBytes).toBytes();
     
-    kA2[31] = kA[31] ^ 0b1000_0000
+    const kA2 = new Uint8Array(32);
+    kA2.set(kA);
+    kA2[31] = kA[31] ^ 0b1000_0000;
 
-    return [
-        kA,
-        kA2
-    ]
+    return [kA, kA2];
 }
 
 /**
  * Generate Blinded ID from Session ID for server public key (25xx, new format)
  * @param sessionId Session ID
  * @param serverPk Server public key
- * @returns {Uint8Array}
  */
 export const generateBlindedId25 = (sessionId: string | Uint8Array, serverPk: string): Uint8Array => {
-    if(typeof sessionId == "string") sessionId = hexToBytes(sessionId);
-    if(sessionId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+    sessionId = convertAndValidateID(sessionId);
 
-    const generateBlindingFactor = (id: string, serverPk: string): Uint8Array => {
-        let hash = blake2b.create({
-            dkLen: 64
-        })
-        hash.update(hexToBytes("05" + id))
-        hash.update(hexToBytes(serverPk))
-
-        return reduceScalar(hash.digest())
-    }
-
-    const kBytes = generateBlindingFactor(bytesToHex(sessionId), serverPk)
-    const xEd25519Key = ed25519.Point.fromHex(convertToEd25519Key(sessionId))
-    const kA = xEd25519Key.multiply(ed25519.CURVE.Fp.fromBytes(kBytes)).toBytes()
-
-    return kA
+    const kBytes = generateBlindingFactor(`05${bytesToHex(sessionId)}${serverPk}`);
+    return mulPointByScalar(convertToEd25519Key(sessionId), kBytes).toBytes();
 }
 
 /**
@@ -104,18 +68,10 @@ export const generateBlindedId25 = (sessionId: string | Uint8Array, serverPk: st
  * @returns {Uint8Array}
  */
 export const unblind15 = (blindedId: string | Uint8Array, serverPk: string): Uint8Array => {
-    if(typeof blindedId == "string") blindedId = hexToBytes(blindedId);
-    if(blindedId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+    blindedId = convertAndValidateID(blindedId);
 
-    const generateInvBlindingFactor = (serverPk: string): Uint8Array => {
-        return invertScalar(reduceScalar(blake2b(hexToBytes(serverPk), {
-            dkLen: 64
-        })))
-    }
-    
-    const point = ed25519.Point.fromHex(blindedId)
-    let ed = point.multiply(ed25519.CURVE.Fp.fromBytes(generateInvBlindingFactor(serverPk))).toBytes()
-    return convertToCurve25519Key(ed)
+    const ed = mulPointByScalar(blindedId, invertScalar(generateBlindingFactor(serverPk))).toBytes();
+    return convertToCurve25519Key(ed);
 }
 
 /**
@@ -123,11 +79,9 @@ export const unblind15 = (blindedId: string | Uint8Array, serverPk: string): Uin
  * 
  * Swarm you belong to is whichever one has swarm id closest to this derived value
  * @param sessionId Session ID
- * @returns {Uint8Array}
  */
 export const generateSwarmSpace = (sessionId: string | Uint8Array): Uint8Array => {
-    if(typeof sessionId == "string") sessionId = hexToBytes(sessionId);
-    if(sessionId.length != 32) throw new Error("ID must be 32 bytes. Are you sure you passed the ID without a prefix?");
+    sessionId = convertAndValidateID(sessionId);
 
     let res = 0n;
     for (let i = 0; i < 32; i += 8) {
@@ -139,5 +93,5 @@ export const generateSwarmSpace = (sessionId: string | Uint8Array): Uint8Array =
         res ^= value;
     }
 
-    return numberToBytesBE(res, 8)
+    return numberToBytesBE(res, 8);
 }

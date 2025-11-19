@@ -17,7 +17,7 @@
 npm i @li0ard/session_id
 
 # from JSR
-bunx jsr i @li0ard/session_id
+bunx jsr i @li0ard/session-id
 ```
 
 ## Examples
