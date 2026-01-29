@@ -1,6 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import { convertToCurve25519Key, convertToEd25519Key, generateBlindedId15, generateBlindedId25, generateSwarmSpace, unblind15 } from "../src";
-import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 
 describe("Curve <-> Edwards", () => {
     test("Curve25519 -> Ed25519", () => {

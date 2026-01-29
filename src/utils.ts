@@ -1,7 +1,7 @@
-import type { EdwardsPoint } from "@noble/curves/abstract/edwards";
-import { mod } from "@noble/curves/abstract/modular";
-import { bytesToNumberLE, numberToBytesLE } from "@noble/curves/utils";
-import { ed25519 } from "@noble/curves/ed25519";
+import type { EdwardsPoint } from "@noble/curves/abstract/edwards.js";
+import { mod } from "@noble/curves/abstract/modular.js";
+import { bytesToNumberLE, numberToBytesLE } from "@noble/curves/utils.js";
+import { ed25519 } from "@noble/curves/ed25519.js";
 
 /** Invert scalar over curve `N` */
 export const invertScalar = (s: Uint8Array): Uint8Array => numberToBytesLE(ed25519.Point.Fn.inv(bytesToNumberLE(s)), 32);

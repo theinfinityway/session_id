@@ -1,8 +1,8 @@
-import { ed25519 } from "@noble/curves/ed25519";
-import { blake2b } from "@noble/hashes/blake2";
+import { ed25519 } from "@noble/curves/ed25519.js";
+import { blake2b } from "@noble/hashes/blake2.js";
 import { invertScalar, reduceScalar, mulPointByScalar } from "./utils.js";
-import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
-import { numberToBytesBE } from "@noble/curves/utils";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+import { numberToBytesBE } from "@noble/curves/utils.js";
 
 /** Prefixes for IDs */
 export enum IDPrefix {
@@ -20,10 +20,11 @@ const convertAndValidateID = (key: string | Uint8Array): Uint8Array => {
 /** Convert Curve25519 public key (Session ID) to Ed25519 public key */
 export const convertToEd25519Key = (key: string | Uint8Array): Uint8Array => {
     key = convertAndValidateID(key);
-    const f = ed25519.Point.Fp;
-    const x = f.fromBytes(key);
+    const Fp = ed25519.Point.Fp;
+    const u = Fp.fromBytes(key);
+    if (Fp.eql(u, Fp.neg(Fp.ONE))) throw new Error('u=-1');
     
-    return f.toBytes(f.div(f.sub(x, f.ONE), f.add(x, f.ONE)));
+    return Fp.toBytes(Fp.div(Fp.sub(u, Fp.ONE), Fp.add(u, Fp.ONE)));
 }
 
 /** Convert Ed25519 public key to Curve25519 public key (Session ID) */
