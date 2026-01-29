@@ -22,8 +22,8 @@ export const convertToEd25519Key = (key: string | Uint8Array): Uint8Array => {
     key = convertAndValidateID(key);
     const f = ed25519.Point.Fp;
     const x = f.fromBytes(key);
-
-    return f.toBytes(f.mul(f.inv(f.add(x, f.ONE)), f.sub(x, f.ONE)))
+    
+    return f.toBytes(f.div(f.sub(x, f.ONE), f.add(x, f.ONE)));
 }
 
 /** Convert Ed25519 public key to Curve25519 public key (Session ID) */
