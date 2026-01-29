@@ -1,4 +1,4 @@
-import { ed25519, edwardsToMontgomeryPub } from "@noble/curves/ed25519";
+import { ed25519 } from "@noble/curves/ed25519";
 import { blake2b } from "@noble/hashes/blake2";
 import { invertScalar, reduceScalar, mulPointByScalar } from "./utils.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
@@ -20,14 +20,14 @@ const convertAndValidateID = (key: string | Uint8Array): Uint8Array => {
 /** Convert Curve25519 public key (Session ID) to Ed25519 public key */
 export const convertToEd25519Key = (key: string | Uint8Array): Uint8Array => {
     key = convertAndValidateID(key);
-    const f = ed25519.CURVE.Fp;
+    const f = ed25519.Point.Fp;
     const x = f.fromBytes(key);
 
     return f.toBytes(f.mul(f.inv(f.add(x, f.ONE)), f.sub(x, f.ONE)))
 }
 
 /** Convert Ed25519 public key to Curve25519 public key (Session ID) */
-export const convertToCurve25519Key = (key: string | Uint8Array): Uint8Array => edwardsToMontgomeryPub(convertAndValidateID(key));
+export const convertToCurve25519Key = (key: string | Uint8Array): Uint8Array => ed25519.utils.toMontgomery(convertAndValidateID(key));
 
 const generateBlindingFactor = (input: string): Uint8Array => reduceScalar(blake2b(hexToBytes(input), { dkLen: 64 }));
 
@@ -87,9 +87,7 @@ export const generateSwarmSpace = (sessionId: string | Uint8Array): Uint8Array =
     for (let i = 0; i < 32; i += 8) {
         const buf = sessionId.subarray(i, i + 8);
         let value = 0n;
-        for (let j = 0; j < 8; ++j) {
-            value = (value << 8n) | BigInt(buf[j]);
-        }
+        for (let j = 0; j < 8; ++j) value = (value << 8n) | BigInt(buf[j]);
         res ^= value;
     }
 
